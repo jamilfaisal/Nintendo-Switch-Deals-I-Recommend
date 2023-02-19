@@ -1,4 +1,4 @@
-# Nintendo-Switch-Deals-I-Recommend
+# Nintendo Switch Deals I Recommend (nSDIR)
 
 This tool updates the Sale Status, prices, and the Sale Ending dates for games in the Switch Game Recommendations Notion page by scraping information from [DekuDeals](dekudeals.com).
 
