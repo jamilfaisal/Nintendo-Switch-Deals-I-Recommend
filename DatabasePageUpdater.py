@@ -2,10 +2,13 @@ import json
 import requests
 import os
 
+from Logger import Logger
+
 
 class DatabasePageUpdater:
 
-    def __init__(self):
+    def __init__(self, logger: Logger):
+        self.logger = logger
         filename = os.path.join('secrets.json')
         try:
             with open(filename, mode='r') as f:
@@ -24,7 +27,7 @@ class DatabasePageUpdater:
     def update_property(self, page_id, payload):
         response = requests.patch(self.url.format(page_id), json=payload, headers=self.headers)
         if response.status_code != 200:
-            print("Failed to update sale status with status code: {}, Text :{}", response.status_code, response.text)
+            self.logger.write_to_logfile("Failed to update sale status with status code: {}, Text :{}".format(response.status_code, response.text))
             return False
         return True
 

@@ -4,21 +4,25 @@ import requests
 from dateutil.parser import parse
 from DatabasePageGetter import DatabasePageGetter
 from DatabasePageUpdater import DatabasePageUpdater
+from Logger import Logger
 
 
 class GamesUpdater:
     def __init__(self):
+        self.logger = Logger()
         self.games = DatabasePageGetter().get_all_rows_on_sale_and_not_on_sale()
-        print("Retrieved {} games from database".format(len(self.games)))
+        self.logger.write_to_logfile("Retrieved {} games from database".format(len(self.games)))
 
     def update_games(self):
         for count, game in enumerate(self.games):
-            GameUpdater(count+1, game).update_game()
+            GameUpdater(self.logger, count+1, game).update_game()
 
 
 
 class GameUpdater:
-    def __init__(self, count, game):
+    def __init__(self, logger, count, game):
+        self.logger = logger
+        self.databasePageUpdater = DatabasePageUpdater(self.logger)
         self.count = count
         self.name = game["properties"]["Name"]["title"][0]["text"]["content"]
         self.page_id = game["id"]
@@ -36,47 +40,47 @@ class GameUpdater:
 
 
     def update_game(self):
-        print("{}. Checking \"{}\"".format(self.count, self.name))
+        self.logger.write_to_logfile("{}. Checking \"{}\"".format(self.count, self.name))
         updates = []
 
         # If sale status has changed, then update Sale Status
         if self.old_sale_status != self.current_sale_status:
-            if DatabasePageUpdater().update_sale_status(self.page_id, self.current_sale_status):
+            if self.databasePageUpdater.update_sale_status(self.page_id, self.current_sale_status):
                 change = "Sale status: {} -> {}".format(self.old_sale_status, self.current_sale_status)
                 updates.append(change)
-                print(change)
+                self.logger.write_to_logfile(change)
 
         # If Price has changed, then update Price
         if self.current_price != -1 and abs(round(self.old_price, 2) - round(self.current_price, 2)) > 0.1:
-            if DatabasePageUpdater().update_price(self.page_id, self.current_price):
+            if self.databasePageUpdater.update_price(self.page_id, self.current_price):
                 change = "Price: {} -> {}".format(self.old_price, self.current_price)
                 updates.append(change)
-                print(change)
+                self.logger.write_to_logfile(change)
 
         # If "ATL Price" > "Price", then change "ATL Price" to "Price"
         if self.current_price < self.ATL_price:
-            if DatabasePageUpdater().update_ATL_price(self.page_id, self.current_price):
+            if self.databasePageUpdater.update_ATL_price(self.page_id, self.current_price):
                 change = "ATL price: {} -> {}".format(self.ATL_price, self.current_price)
                 updates.append(change)
-                print(change)
+                self.logger.write_to_logfile(change)
 
         if self.current_sale_ends is not None and self.old_sale_ends != self.current_sale_ends:
             # If information is available and is different, update "Sale Ends"
-            if DatabasePageUpdater().update_sale_ends(self.page_id, self.current_sale_ends):
+            if DatabasePageUpdater(self.logger).update_sale_ends(self.page_id, self.current_sale_ends):
                 change = "Sale Ends: {} -> {}".format(self.old_sale_ends, self.current_sale_ends)
                 updates.append(change)
-                print(change)
+                self.logger.write_to_logfile(change)
         else:
             # If information is not available and game is not on sale and Sale Ends is not clear, clear "Sale Ends"
             if self.current_sale_status == "Not On Sale" and self.old_sale_ends is not None:
-                if DatabasePageUpdater().clear_sale_ends(self.page_id):
+                if self.databasePageUpdater.clear_sale_ends(self.page_id):
                     change = "Cleared Sale Ends"
                     updates.append(change)
-                    print(change)
+                    self.logger.write_to_logfile(change)
 
         if len(updates) == 0:
-            print("No updates!")
-        print("\n")
+            self.logger.write_to_logfile("No updates!")
+        self.logger.write_to_logfile("\n")
 
     def get_sale_status_and_price_of_game(self):
         response = requests.get(self.deku_link).text
@@ -96,10 +100,10 @@ class GameUpdater:
             try:
                 price = float(price_str)
             except ValueError:
-                print("Could not convert {} to a floating point number", price_str)
+                self.logger.write_to_logfile("Could not convert {} to a floating point number", price_str)
                 return sale_status, -1  # Error: Failed to get price
         else:
-            print("Could not find current price")
+            self.logger.write_to_logfile("Could not find current price")
             return sale_status, -1  # Error: Failed to get price
         return sale_status, price
 
