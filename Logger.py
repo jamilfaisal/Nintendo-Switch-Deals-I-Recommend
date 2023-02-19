@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 
@@ -7,5 +8,7 @@ class Logger:
 
     def write_to_logfile(self, text):
         print(text)
+        if not os.path.exists("logs/"):
+            os.mkdir("logs")
         with open(self.file_name, "a") as f:
             f.write(text + "\n")
