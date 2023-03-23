@@ -71,8 +71,9 @@ class GameUpdater:
                 updates.append(change)
                 self.logger.write_to_logfile(change)
         else:
-            # If information is not available and game is not on sale and Sale Ends is not clear, clear "Sale Ends"
-            if self.current_sale_status == "Not On Sale" and self.old_sale_ends is not None:
+            # If information is not available and game is not on sale and Sale Ends is not clear
+            # or information is not available and Sale Ends is before today, clear "Sale Ends"
+            if (self.current_sale_status == "Not On Sale" and self.old_sale_ends is not None) or self.old_sale_ends_before_today():
                 if self.databasePageUpdater.clear_sale_ends(self.page_id):
                     change = "Cleared Sale Ends"
                     updates.append(change)
@@ -130,3 +131,13 @@ class GameUpdater:
                 hours = int(chunk2.split(" ")[1])
                 date = (datetime.now() + timedelta(hours=hours)).strftime("%Y-%m-%d")
             return date
+
+    def old_sale_ends_before_today(self):
+        """
+        Checks if old_sale_ends is before today
+        :return:
+        """
+        if self.old_sale_ends is None:
+            return False
+        old_sale_ends_str = datetime.strptime(self.old_sale_ends, "%Y-%m-%d")
+        return old_sale_ends_str.date() < datetime.now().date()
